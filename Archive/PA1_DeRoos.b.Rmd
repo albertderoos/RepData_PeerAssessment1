@@ -1,0 +1,54 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+author: Albert de Roos
+output: html_document
+date: "`r Sys.Date()`"
+keep_md: true
+---
+``` {r load_libraries, message=FALSE, results = "hide"}
+library(dplyr)
+Sys.setlocale("LC_TIME", "English")
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=6, fig.height=4, fig.path='Figs/', echo=TRUE)
+```
+
+## Loading and preprocessing the data
+The data file was unzipped using read.csv and the column with the dates was set to Date format. In order to get English-named weekdays, the locale on the machine was set to `r Sys.setlocale("LC_TIME", "English")`
+
+```{r processing_data}
+myrepdata <- read.csv("activity.csv")
+myrepdata$date <- as.Date(myrepdata$date)
+str(myrepdata)
+```
+
+## What is mean total number of steps taken per day?
+In order to calculate the mean and median steps per day, first the data is grouped by the day and the sum per day is derived.
+
+```{r total_steps_per_day}
+stepsperday <- myrepdata %>% group_by(date) %>% summarize(sum = sum(steps))
+str(stepsperday)
+```
+
+This yields a new data frame with `r nrow(stepsperday)` days consistent with the number of days in the 2 months of the data collection. The histogram of the steps taken per day and the mean and median are shown below. 
+
+```{r histogram_total_steps_per_day}
+hist(stepsperday$sum, breaks = 15, xlab = "total steps per day", main = "Steps per day distribution")
+summary(stepsperday$sum)
+```
+
+## What is the average daily activity pattern?
+For the average daily activity pattern, we group we data by time interval and then take the average of each time interval. We remove the NAN when we take the average. From the graph below we see the average daily pattern and below that, the interval where we see the highest average steps. 
+
+```{r daily_activity_pattern}
+stepsperinterval <- myrepdata %>%  group_by(interval) %>% summarize(avgsteps = mean(steps, na.rm = TRUE))
+plot(stepsperinterval$interval, stepsperinterval$avgsteps, type = "l", main = "average daily pattern", xlab = "interval", ylab = "avg steps")
+stepsperinterval[which.max(stepsperinterval$avgsteps), ]
+```
+
+## Imputing missing values
+
+
+
+## Are there differences in activity patterns between weekdays and weekends?

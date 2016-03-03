@@ -1,0 +1,97 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+author: Albert de Roos
+output: html_document
+date: "`r Sys.Date()`"
+keep_md: true
+---
+``` {r load_libraries, message=FALSE, results = "hide"}
+library(dplyr)
+Sys.setlocale("LC_TIME", "English")
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=6, fig.height=4, fig.path='Figs/', echo=TRUE)
+```
+
+## Loading and preprocessing the data
+The data file was unzipped using read.csv and the column with the dates was set to Date format. In order to get English-named weekdays, the locale on the machine was set to `r Sys.setlocale("LC_TIME", "English")`
+
+```{r processing_data}
+myrepdata <- read.csv("activity.csv")
+myrepdata$date <- as.Date(myrepdata$date)
+str(myrepdata)
+```
+
+## What is mean total number of steps taken per day?
+In order to calculate the mean and median steps per day, first the data is grouped by the day and the sum per day is derived.
+
+```{r total_steps_per_day}
+stepsperday <- myrepdata %>% group_by(date) %>% summarize(sum = sum(steps))
+str(stepsperday)
+```
+
+This yields a new data frame with `r nrow(stepsperday)` days consistent with the number of days in the 2 months of the data collection. The histogram of the steps taken per day and the mean and median are shown below. 
+
+```{r histogram_total_steps_per_day}
+hist(stepsperday$sum, breaks = 15, xlab = "total steps per day", main = "Steps per day distribution")
+summary(stepsperday$sum)
+```
+
+## What is the average daily activity pattern?
+For the average daily activity pattern, we group we data by time interval and then take the average of each time interval. We remove the NAN when we take the average. From the graph below we see the average daily pattern and below that, the interval where we see the highest average steps. 
+
+```{r daily_activity_pattern}
+stepsperinterval <- myrepdata %>%  group_by(interval) %>% summarize(avgsteps = mean(steps, na.rm = TRUE))
+plot(stepsperinterval$interval, stepsperinterval$avgsteps, type = "l", main = "average daily pattern", xlab = "interval", ylab = "avg steps")
+stepsperinterval[which.max(stepsperinterval$avgsteps), ]
+```
+
+## Imputing missing values
+### Determine where the missing value are 
+There aare missing values in the data as shown using a summary of the imported dataset
+```{r summary_dataset}
+summary(myrepdata$steps)
+```
+
+
+There are only missing values in the number of steps, not in the data or interval. Within the intervals, only complete days are missing and not partial days. Each of the intervals has the same number of missing values. 
+
+```{r missing_data_explore}
+myrepdata2 <- myrepdata[complete.cases(myrepdata),]
+stepsperinterval2 <- myrepdata %>% group_by(interval) %>% summarize(count = n())
+stepsperinterval3 <- myrepdata2 %>% group_by(interval) %>% summarize(count = n())
+summary(stepsperinterval2)
+summary(stepsperinterval3)
+```
+
+### Strategy and execution of imputing the missing values
+The strategy for imputing missing values is based on filling in the average of the specific timeinterval. In the code, for every NA we encounter in the file, we first determine which interval it is, then we extract the average for this interval from a seerate set with averages. Finally, we replace the value with the average. The new dataset is called 'myrepdatafilled'. We see from the header of the file that the values have been replaced by the values of the average value for that interval:
+
+```{r imputing_missing_values}
+          myrepdatafilled <- myrepdata
+          for (n in 1:nrow(myrepdatafilled)){
+               if (is.na(myrepdatafilled[n, "steps"])) {
+                    interval = myrepdatafilled[n,3]
+                    interval_average <- stepsperinterval[stepsperinterval$interval == interval, ]
+                    myrepdatafilled[n, 1] <- interval_average$avgsteps[[1]]
+               }
+          }
+head(myrepdata, 5)
+head(myrepdatafilled, 5)
+head(stepsperinterval, 5)
+```
+
+The next graphs show the distribution of the steps per time interval for the original data (see also earlier graph) and the data with the NAs filled in with the average. Althoung the number of measurements increased, the values for mean and median were not changed.
+
+```{r hisograms_filled}
+          stepsperday <- myrepdata %>% group_by(date) %>% summarize(sum = sum(steps))
+          hist(stepsperday$sum, breaks = 15, xlab = "original total steps per day", main = "Original: Steps per day distribution")
+          summary(stepsperday$sum)
+          
+          stepsperdayfilled <- myrepdatafilled %>% group_by(date) %>% summarize(sum = sum(steps))
+          hist(stepsperdayfilled$sum, breaks = 15, xlab = "total steps per day", main = "Filled: Steps per day distribution")
+          summary(stepsperdayfilled$sum)
+```
+          
+## Are there differences in activity patterns between weekdays and weekends?
